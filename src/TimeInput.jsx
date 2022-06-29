@@ -52,10 +52,7 @@ function focus(element) {
 function renderCustomInputs(placeholder, elementFunctions, allowMultipleInstances) {
   const usedFunctions = [];
   const pattern = new RegExp(
-    Object.keys(elementFunctions)
-      .map((el) => `${el}+`)
-      .join('|'),
-    'g',
+    Object.keys(elementFunctions).join('|'), 'g',
   );
   const matches = placeholder.match(pattern);
 
@@ -71,9 +68,9 @@ function renderCustomInputs(placeholder, elementFunctions, allowMultipleInstance
       const renderFunction =
         elementFunctions[currentMatch] ||
         elementFunctions[
-          Object.keys(elementFunctions).find((elementFunction) =>
-            currentMatch.match(elementFunction),
-          )
+        Object.keys(elementFunctions).find((elementFunction) =>
+          currentMatch.match(elementFunction),
+        )
         ];
 
       if (!allowMultipleInstances && usedFunctions.includes(renderFunction)) {
@@ -484,7 +481,19 @@ export default class TimeInput extends PureComponent {
       throw new Error(`Unsupported token: ${currentMatch}`);
     }
 
-    const showLeadingZeros = currentMatch ? currentMatch.length === 2 : true;
+    const showFractions = /S+/.test(currentMatch);
+    const showLeadingZeros = !showFractions && currentMatch ? currentMatch.length === 2 : true;
+
+    /**
+    * Returns "0.1" given "S"
+    * Returns "0.01" given "SS"
+    * Returns "0.001" given "SSS"
+    * and so on
+    */
+    function getStepFromFormat(format) {
+      const step = Math.pow(10, -format.length + 1);
+      return step;
+    }
 
     return (
       <SecondInput
@@ -497,6 +506,7 @@ export default class TimeInput extends PureComponent {
         inputRef={this.secondInput}
         minute={minute}
         placeholder={secondPlaceholder}
+        step={showFractions ? getStepFromFormat(currentMatch.match(/S+/)) : undefined}
         showLeadingZeros={showLeadingZeros}
         value={second}
       />
@@ -527,11 +537,11 @@ export default class TimeInput extends PureComponent {
     const { format } = this.props;
 
     const elementFunctions = {
-      h: this.renderHour,
-      H: this.renderHour,
-      m: this.renderMinute,
-      s: this.renderSecond,
-      a: this.renderAmPm,
+      'h+': this.renderHour,
+      'H+': this.renderHour,
+      'm+': this.renderMinute,
+      's+(\\.S+)?': this.renderSecond,
+      'a+': this.renderAmPm,
     };
 
     const allowMultipleInstances = typeof format !== 'undefined';
